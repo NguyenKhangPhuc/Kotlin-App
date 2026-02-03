@@ -36,19 +36,91 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.TextField
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MobileComputingTheme {
-                Conversation(SampleData.conversationSample)
-            }
+            App()
         }
     }
 }
 
 data class Message(val author: String, val body: String)
+sealed class Screen(val route: String, val label: String, val icon: ImageVector){
+    object Chat : Screen("conservation", "Chat", Icons.Default.Email)
+    object Home : Screen("home", "Home", Icons.Default.Home)
+    object Setting: Screen("setting", "Setting", Icons.Default.Settings)
+}
+
+@Composable
+fun App(){
+    val navController = rememberNavController()
+
+    Scaffold(
+        bottomBar = {
+            BottomNavigationBar(navController)
+        }
+    ) {
+        innerPadding ->
+        NavHost(
+            navController=navController,
+            startDestination = Screen.Chat.route,
+            modifier = Modifier.padding(innerPadding)
+        ){
+           composable(Screen.Chat.route){
+               Conversation(SampleData.conversationSample)
+           }
+            composable(Screen.Home.route){
+                Home()
+            }
+            composable(Screen.Setting.route){
+                Text("Setting page")
+            }
+        }
+    }
+}
+
+@Composable
+fun BottomNavigationBar(navController: NavController){
+    val items = listOf(Screen.Home, Screen.Chat, Screen.Setting)
+    NavigationBar {
+        val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+        items.forEach {item ->
+            NavigationBarItem(
+                selected = currentRoute == item.route,
+                onClick = {
+                    navController.navigate(item.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                icon = { Icon(item.icon, contentDescription = item.label) },
+                label = {Text(item.label)}
+            )
+        }
+    }
+}
 
 @Composable
 fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
@@ -92,6 +164,31 @@ fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
         }
     }
 }
+
+@Composable
+fun Home(){
+    var message by remember { mutableStateOf("") }
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Send a message")
+
+        TextField(
+            value = message,
+            onValueChange = { newValue -> message = newValue },
+            placeholder = { Text("Type your message...") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(onClick = {
+            // Xử lý gửi message
+            println("Message sent: $message")
+        }) {
+            Text("Send")
+        }
+    }
+}
+
 
 @Composable
 fun Conversation(messages: List<Message>) {
