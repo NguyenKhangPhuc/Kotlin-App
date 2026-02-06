@@ -36,6 +36,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,11 +49,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.TextField
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
+import com.example.mobilecomputing.ViewModel.UserProfileViewModel
+import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,47 +108,42 @@ fun App(){
     }
 }
 
-@Composable
-fun BottomNavigationBar(navController: NavController){
-    val items = listOf(Screen.Home, Screen.Chat, Screen.Setting)
-    NavigationBar {
-        val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-        items.forEach {item ->
-            NavigationBarItem(
-                selected = currentRoute == item.route,
-                onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = { Icon(item.icon, contentDescription = item.label) },
-                label = {Text(item.label)}
-            )
-        }
-    }
-}
 
 @Composable
 fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val database = AppDatabase.getInstance(context)
+    val factory = UserProfileViewModelFactory(database.userProfileDAO())
+    val viewModel: UserProfileViewModel = viewModel(factory = factory)
+    val userProfile by viewModel.userProfile.collectAsState()
+    val imagePath = userProfile?.imagePath
+    val username = userProfile?.username
     Row (modifier = Modifier.padding(all = 8.dp)) {
-        Image(
-            painter = painterResource(id = R.drawable.profile_picture),
-            contentDescription = "Profile picture",
-            modifier = Modifier
-                .size(45.dp)
-                .clip(CircleShape)
-                .border(1.5.dp, MaterialTheme.colorScheme.primary)
-        )
+        imagePath.let {
+
+                Box(
+                    modifier = Modifier
+                        .size(45.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = it,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(45.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, MaterialTheme.colorScheme.primary)
+                    )
+                }
+        }
         Spacer(modifier = Modifier.width(8.dp))
 
         var isExpanded by remember { mutableStateOf(false) }
         Column (modifier = Modifier.clickable { isExpanded = !isExpanded }){
             Text(
-                text = msg.author,
+                text = username ?: "Unknown name",
                 color = MaterialTheme.colorScheme.secondary,
                 style = MaterialTheme.typography.titleSmall
             )
@@ -152,7 +157,9 @@ fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
                 shadowElevation = 1.5.dp,
                 color=surfaceTextBodyColor,
                 // animateContentSize will change the Surface size gradually
-                modifier = Modifier.animateContentSize().padding(1.dp)
+                modifier = Modifier
+                    .animateContentSize()
+                    .padding(1.dp)
             ) {
                 Text(
                     text = msg.body,
@@ -161,30 +168,6 @@ fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
                     maxLines = if (isExpanded) Int.MAX_VALUE else 1
                     )
             }
-        }
-    }
-}
-
-@Composable
-fun Home(){
-    var message by remember { mutableStateOf("") }
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Send a message")
-
-        TextField(
-            value = message,
-            onValueChange = { newValue -> message = newValue },
-            placeholder = { Text("Type your message...") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(onClick = {
-            // Xử lý gửi message
-            println("Message sent: $message")
-        }) {
-            Text("Send")
         }
     }
 }
