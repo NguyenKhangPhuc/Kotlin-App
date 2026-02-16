@@ -1,5 +1,6 @@
 package com.example.mobilecomputing
 
+import NotificationHelper
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,6 +41,11 @@ import com.example.mobilecomputing.DAO.UserProfileDao
 import com.example.mobilecomputing.ViewModel.UserProfileViewModel
 import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
 import com.example.mobilecomputing.entity.UserProfileEntity
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+
+import androidx.core.content.ContextCompat
 
 
 fun copyImageToInternalStorage(
@@ -90,6 +96,7 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
     var savedImagePath by remember { mutableStateOf<String?>(userProfile.imagePath ?: "") }
     println(" $userProfile")
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val notificationHelper = NotificationHelper(context)
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -156,6 +163,35 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
             }
         }) {
             Text("Save")
+        }
+
+        val requestPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                notificationHelper.showNotification("Accessability", "Permission granted",null)
+            } else {
+
+            }
+        }
+
+        Button(onClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(context , Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    println("ASK permission")
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    println("grant permission")
+                    notificationHelper.showNotification("Accessability", "Permission granted",null)
+                }
+            }else {
+                println("grant permission 2")
+                notificationHelper.showNotification("Accessability", "Permission granted",null)
+            }
+        }) {
+            Text("Enable button")
         }
     }
 }

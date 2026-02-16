@@ -1,6 +1,14 @@
 package com.example.mobilecomputing
 
+import GyroSensor
+import NotificationHelper
 import SampleData
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.pm.PackageManager
+import android.hardware.SensorManager
+import android.os.Build
 import android.os.Bundle
 import androidx.compose.foundation.border
 import androidx.activity.ComponentActivity
@@ -44,29 +52,25 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.mobilecomputing.ViewModel.UserProfileViewModel
 import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
-
+import androidx.compose.runtime.DisposableEffect
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             App()
         }
@@ -83,7 +87,19 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 @Composable
 fun App(){
     val navController = rememberNavController()
-
+    val context = LocalContext.current
+    val notificationHelper = NotificationHelper(context)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (ContextCompat.checkSelfPermission(context , Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            println("grant permission")
+            notificationHelper.showNotification("Accessability", "Automatic", context as Activity)
+        }
+    }else {
+        println("grant permission 2")
+        notificationHelper.showNotification("Accessability", "Automatic", context as Activity)
+    }
     Scaffold(
         bottomBar = {
             BottomNavigationBar(navController)
@@ -175,6 +191,15 @@ fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
 
 @Composable
 fun Conversation(messages: List<Message>) {
+    val context = LocalContext.current
+    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    val gyroManager = remember { GyroSensor(sensorManager,context) }
+
+
+    DisposableEffect(Unit) {
+        gyroManager.start()
+        onDispose { gyroManager.stop() }
+    }
     LazyColumn {
         items(messages) { message -> MessageCard(message) }
     }
