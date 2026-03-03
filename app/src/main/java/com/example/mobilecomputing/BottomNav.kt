@@ -25,7 +25,11 @@ fun BottomNavigationBar(navController: NavController){
                         restoreState = true
                     }
                 },
-                icon = { Icon(item.icon, contentDescription = item.label) },
+                icon = {
+                    item.icon?.let { iconRes ->
+                        Icon(iconRes, contentDescription = item.label)
+                    }
+                },
                 label = { Text(item.label) }
             )
         }

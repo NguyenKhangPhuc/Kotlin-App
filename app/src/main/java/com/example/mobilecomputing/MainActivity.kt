@@ -45,13 +45,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -66,6 +70,22 @@ import coil.compose.AsyncImage
 import com.example.mobilecomputing.ViewModel.UserProfileViewModel
 import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.mobilecomputing.entity.UserProfileEntity
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +102,8 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Chat : Screen("conservation", "Chat", Icons.Default.Email)
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Setting: Screen("setting", "Setting", Icons.Default.Settings)
+    object Login : Screen("login", "Login", Icons.Default.Info)
+    object SignUp : Screen("signup", "Signup", Icons.Default.Info)
 }
 
 @Composable
@@ -89,6 +111,14 @@ fun App(){
     val navController = rememberNavController()
     val context = LocalContext.current
     val notificationHelper = NotificationHelper(context)
+    val sessionManager = remember { SessionManager(context) }
+
+    // Kiểm tra ngay giá trị từ SharedPreferences khi khởi tạo State
+    var isLoggedIn by remember {
+        mutableStateOf(sessionManager.getUserId() != -1)
+    }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (ContextCompat.checkSelfPermission(context , Manifest.permission.POST_NOTIFICATIONS)
             == PackageManager.PERMISSION_GRANTED
@@ -102,13 +132,15 @@ fun App(){
     }
     Scaffold(
         bottomBar = {
-            BottomNavigationBar(navController)
+            if (currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route) {
+                BottomNavigationBar(navController)
+            }
         }
     ) {
         innerPadding ->
         NavHost(
             navController=navController,
-            startDestination = Screen.Chat.route,
+            startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route,
             modifier = Modifier.padding(innerPadding)
         ){
            composable(Screen.Chat.route){
@@ -119,6 +151,15 @@ fun App(){
             }
             composable(Screen.Setting.route){
                 Text("Setting page")
+            }
+            composable(Screen.Login.route) {
+                LoginScreen(
+                   navController,
+                    sessionManager,
+                )
+            }
+            composable(Screen.SignUp.route) {
+                SignUpScreen(onNavigateToLogin = { navController.navigate(Screen.Login.route) })
             }
         }
     }
@@ -210,5 +251,210 @@ fun Conversation(messages: List<Message>) {
 fun MessagePreview() {
     MobileComputingTheme {
         Conversation(SampleData.conversationSample)
+    }
+}
+
+@Composable
+fun LoginScreen(navController: NavController, sessionManager: SessionManager) {
+    val context = LocalContext.current
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val database = AppDatabase.getInstance(context)
+    val factory = UserProfileViewModelFactory(database.userProfileDAO())
+    val viewModel: UserProfileViewModel = viewModel(factory = factory)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+        Text(
+            text = "KPAPP",
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 4.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        Text(
+            text = "Login and Enjoy the application",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Email
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Enter your Email Address") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = {
+                viewModel.login(emailInput = email, passwordInput = password, sessionManager = sessionManager, onResult = { success ->
+                    if (success) {
+                        navController.navigate(Screen.Chat.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    } else {
+
+                        println("Đăng nhập thất bại!")
+                    }
+                })
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text("Sign In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Already have an account? ")
+            TextButton(onClick = {
+                navController.navigate(Screen.Chat.route) {
+                    popUpTo(Screen.SignUp.route) { inclusive = true }
+                }
+            }) {
+                Text(
+                    text = "Sign In",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SignUpScreen(onNavigateToLogin: () -> Unit) {
+    val context = LocalContext.current
+    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val database = AppDatabase.getInstance(context)
+    val factory = UserProfileViewModelFactory(database.userProfileDAO())
+    val viewModel: UserProfileViewModel = viewModel(factory = factory)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+        Text(
+            text = "KPAPP",
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 4.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        )
+
+        Text(
+            text = "Create your account",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+
+        OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = { Text("Username") },
+            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Email
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email Address") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Password
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = {
+                viewModel.signup(UserProfileEntity(username = username, email = email, password = password, imagePath = null))
+                onNavigateToLogin()
+                      },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text("Sign Up", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "Already have an account? ")
+            TextButton(onClick = onNavigateToLogin) {
+                Text(
+                    text = "Sign In",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }

@@ -66,6 +66,7 @@ fun copyImageToInternalStorage(
     return outputFile.absolutePath
 }
 
+
 @Composable
 fun Home(){
     val context = LocalContext.current
@@ -74,7 +75,7 @@ fun Home(){
     val viewModel: UserProfileViewModel = viewModel(factory = factory)
     val userProfile by viewModel.userProfile.collectAsState()
     if (userProfile == null) {
-        MainScreen(UserProfileEntity(0, "Unknown name", ""), viewModel)
+        MainScreen(UserProfileEntity(0, "Unknown name", null, null, null), viewModel)
     } else {
        MainScreen(userProfile!!, viewModel)
     }
@@ -151,16 +152,16 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(onClick = {
-            if (selectedImageUri != null){
+//            if (selectedImageUri != null){
                 val path = copyImageToInternalStorage(context, selectedImageUri!!)
-                viewModel.saveProfile(UserProfileEntity(id = 0, username, imagePath = path))
-                println("Saving")
-            }else if (savedImagePath != null) {
-                viewModel.saveProfile(UserProfileEntity(id = 0, username, imagePath = savedImagePath))
-                println("Saving")
-            }else {
-                println("Choose an imageee")
-            }
+//                viewModel.saveProfile(UserProfileEntity(id = 0, username, imagePath = path))
+//                println("Saving")
+//            }else if (savedImagePath != null) {
+//                viewModel.saveProfile(UserProfileEntity(id = 0, username, imagePath = savedImagePath))
+//                println("Saving")
+//            }else {
+//                println("Choose an imageee")
+//            }
         }) {
             Text("Save")
         }

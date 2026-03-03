@@ -10,12 +10,15 @@ interface UserProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(profile: UserProfileEntity)
 
-    @Query("SELECT * FROM user_profile WHERE id = 0")
-    fun getProfileFlow(): Flow<UserProfileEntity?>
+    @Query("SELECT * FROM user_profile WHERE id = :id")
+    fun getProfileFlow(id: Int): Flow<UserProfileEntity?>
 
-    @Query("UPDATE user_profile SET username = :name WHERE id = 0")
-    fun updateUsername(name: String)
+    @Query("SELECT * FROM user_profile WHERE email = :email")
+    fun getUserProfile(email: String): UserProfileEntity
 
-    @Query("UPDATE user_profile SET imagePath = :path WHERE id = 0")
-    fun updateImagePath(path: String)
+    @Query("UPDATE user_profile SET username = :name WHERE id = :id")
+    fun updateUsername(name: String, id: Int)
+
+    @Query("UPDATE user_profile SET imagePath = :path WHERE id = :id")
+    fun updateImagePath(path: String, id: Int)
 }
