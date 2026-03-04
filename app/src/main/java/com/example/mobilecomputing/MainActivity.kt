@@ -317,7 +317,11 @@ fun LoginScreen(navController: NavController, sessionManager: SessionManager) {
 
         Button(
             onClick = {
-                viewModel.login(emailInput = email, passwordInput = password, sessionManager = sessionManager, onResult = { success ->
+                viewModel.login(
+                    emailInput = email,
+                    passwordInput = password,
+                    sessionManager = sessionManager,
+                    onResult = { success ->
                     if (success) {
                         navController.navigate(Screen.Chat.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
@@ -343,12 +347,12 @@ fun LoginScreen(navController: NavController, sessionManager: SessionManager) {
         ) {
             Text(text = "Already have an account? ")
             TextButton(onClick = {
-                navController.navigate(Screen.Chat.route) {
+                navController.navigate(Screen.SignUp.route) {
                     popUpTo(Screen.SignUp.route) { inclusive = true }
                 }
             }) {
                 Text(
-                    text = "Sign In",
+                    text = "Sign up",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
