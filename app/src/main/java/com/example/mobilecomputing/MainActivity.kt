@@ -24,9 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.MaterialTheme
@@ -73,17 +71,20 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.example.mobilecomputing.Home.Home
+import com.example.mobilecomputing.Home.Posts
+import com.example.mobilecomputing.Home.UserProfileHome
+import com.example.mobilecomputing.Home.UserProfileMainScreen
+import com.example.mobilecomputing.ViewModel.PostViewModel
+import com.example.mobilecomputing.ViewModelFactory.PostFactory
 import com.example.mobilecomputing.entity.UserProfileEntity
 
 class MainActivity : ComponentActivity() {
@@ -99,11 +100,14 @@ class MainActivity : ComponentActivity() {
 
 data class Message(val author: String, val body: String)
 sealed class Screen(val route: String, val label: String, val icon: ImageVector){
-    object Chat : Screen("conservation", "Chat", Icons.Default.Email)
+    object Chat : Screen("conservation", "Blogs", Icons.Default.Email)
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Setting: Screen("setting", "Setting", Icons.Default.Settings)
     object Login : Screen("login", "Login", Icons.Default.Info)
     object SignUp : Screen("signup", "Signup", Icons.Default.Info)
+    object UserProfile : Screen("user/{userId}", "Profile", Icons.Default.Person) {
+        fun createRoute(userId: Int) = "user/$userId"
+    }
 }
 
 @Composable
@@ -130,6 +134,14 @@ fun App(){
         println("grant permission 2")
         notificationHelper.showNotification("Accessability", "Automatic", context as Activity)
     }
+    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    val gyroManager = remember { GyroSensor(sensorManager,context) }
+
+
+    DisposableEffect(Unit) {
+        gyroManager.start()
+        onDispose { gyroManager.stop() }
+    }
     Scaffold(
         bottomBar = {
             if (currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route) {
@@ -144,13 +156,13 @@ fun App(){
             modifier = Modifier.padding(innerPadding)
         ){
            composable(Screen.Chat.route){
-               Conversation(SampleData.conversationSample)
+               AllBlogMainScreen(navController)
            }
             composable(Screen.Home.route){
-                Home()
+                Home(navController)
             }
             composable(Screen.Setting.route){
-                Text("Setting page")
+                SettingPage(navController)
             }
             composable(Screen.Login.route) {
                 LoginScreen(
@@ -161,69 +173,12 @@ fun App(){
             composable(Screen.SignUp.route) {
                 SignUpScreen(onNavigateToLogin = { navController.navigate(Screen.Login.route) })
             }
-        }
-    }
-}
-
-
-@Composable
-fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val database = AppDatabase.getInstance(context)
-    val factory = UserProfileViewModelFactory(database.userProfileDAO())
-    val viewModel: UserProfileViewModel = viewModel(factory = factory)
-    val userProfile by viewModel.userProfile.collectAsState()
-    val imagePath = userProfile?.imagePath
-    val username = userProfile?.username
-    Row (modifier = Modifier.padding(all = 8.dp)) {
-        imagePath.let {
-
-                Box(
-                    modifier = Modifier
-                        .size(45.dp)
-                        .clip(CircleShape)
-                        .background(Color.Black),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = it,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(45.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, MaterialTheme.colorScheme.primary)
-                    )
-                }
-        }
-        Spacer(modifier = Modifier.width(8.dp))
-
-        var isExpanded by remember { mutableStateOf(false) }
-        Column (modifier = Modifier.clickable { isExpanded = !isExpanded }){
-            Text(
-                text = username ?: "Unknown name",
-                color = MaterialTheme.colorScheme.secondary,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            val surfaceTextBodyColor by animateColorAsState(
-                if (isExpanded) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surface
-            )
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                shadowElevation = 1.5.dp,
-                color=surfaceTextBodyColor,
-                // animateContentSize will change the Surface size gradually
-                modifier = Modifier
-                    .animateContentSize()
-                    .padding(1.dp)
-            ) {
-                Text(
-                    text = msg.body,
-                    modifier = Modifier.padding(all = 4.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = if (isExpanded) Int.MAX_VALUE else 1
-                    )
+            composable(
+                route = Screen.UserProfile.route,
+                arguments = listOf(navArgument("userId") { type = NavType.IntType }) // Khai báo kiểu Int
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getInt("userId") ?: 0
+                UserProfileHome(userId = userId, navController)
             }
         }
     }
@@ -231,28 +186,23 @@ fun MessageCard(msg: Message, modifier: Modifier = Modifier) {
 
 
 @Composable
-fun Conversation(messages: List<Message>) {
+fun AllBlogMainScreen( navController: NavController,modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
-    val gyroManager = remember { GyroSensor(sensorManager,context) }
-
-
-    DisposableEffect(Unit) {
-        gyroManager.start()
-        onDispose { gyroManager.stop() }
-    }
-    LazyColumn {
-        items(messages) { message -> MessageCard(message) }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MessagePreview() {
-    MobileComputingTheme {
-        Conversation(SampleData.conversationSample)
+    val database = AppDatabase.getInstance(context)
+    val factory = PostFactory(database.postDAO())
+    val postViewModel: PostViewModel = viewModel(factory = factory)
+    val allPosts by postViewModel.allPosts.collectAsState()
+    if (allPosts.isNullOrEmpty()){
+        Text("No posts from other users")
+    }else {
+        Column (modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)){
+            Posts(allPosts, navController)
+        }
     }
 }
+
 
 @Composable
 fun LoginScreen(navController: NavController, sessionManager: SessionManager) {

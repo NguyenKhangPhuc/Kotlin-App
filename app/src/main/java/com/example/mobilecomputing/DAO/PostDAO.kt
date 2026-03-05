@@ -12,9 +12,11 @@ interface PostDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPost(post: PostEntity)
 
+    @Transaction
     @Query("SELECT * FROM posts ORDER BY id DESC")
     fun getAllPostsFlow(): Flow<List<PostWithUser>>
 
+    @Transaction
     @Query("SELECT * FROM posts WHERE user_id = :userId")
     fun getPostsByUserId(userId: Int): Flow<List<PostWithUser>>
 

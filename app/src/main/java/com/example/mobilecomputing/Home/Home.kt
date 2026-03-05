@@ -1,4 +1,4 @@
-package com.example.mobilecomputing
+package com.example.mobilecomputing.Home
 
 import NotificationHelper
 import android.content.Context
@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -35,15 +33,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import java.io.File
-import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mobilecomputing.DAO.UserProfileDao
 import com.example.mobilecomputing.ViewModel.UserProfileViewModel
 import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
 import com.example.mobilecomputing.entity.UserProfileEntity
 import android.Manifest
 import android.content.pm.PackageManager
-import android.hardware.SensorManager
 import android.os.Build
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
@@ -57,7 +52,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -73,10 +67,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.font.FontWeight
+import androidx.navigation.NavController
+import com.example.mobilecomputing.AppDatabase
+import com.example.mobilecomputing.SessionManager
 import com.example.mobilecomputing.ViewModel.PostViewModel
+import com.example.mobilecomputing.ViewModel.RelationViewModel
 import com.example.mobilecomputing.ViewModelFactory.PostFactory
+import com.example.mobilecomputing.ViewModelFactory.RelationFactory
 import com.example.mobilecomputing.entity.PostEntity
 import com.example.mobilecomputing.entity.PostWithUser
 
@@ -100,7 +98,7 @@ fun copyImageToInternalStorage(
 
 
 @Composable
-fun Home(){
+fun Home(navController: NavController){
     val context = LocalContext.current
     val database = AppDatabase.getInstance(context)
     val factory = UserProfileViewModelFactory(database.userProfileDAO())
@@ -113,9 +111,9 @@ fun Home(){
     }
     val userProfile by viewModel.userProfile.collectAsState()
     if (userProfile == null) {
-        MainScreen(UserProfileEntity(0, "Unknown name", null, null, null), viewModel)
+        LoadingScreen()
     } else {
-       MainScreen(userProfile!!, viewModel)
+       MainScreen(userProfile!!, viewModel, navController)
     }
 }
 
@@ -130,7 +128,7 @@ fun LoadingScreen(){
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
+fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel, navController: NavController){
     val context = LocalContext.current
     val database = AppDatabase.getInstance(context)
     val factory = PostFactory(database.postDAO())
@@ -138,6 +136,11 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
     postViewModel.setUserId(userProfile.id)
     val userPosts by postViewModel.userPosts.collectAsState()
 
+    val relationFactory = RelationFactory(database.relationDAO())
+    val relationViewModel: RelationViewModel = viewModel(factory = relationFactory)
+    relationViewModel.setUserId(userProfile.id)
+    val followers by relationViewModel.userFollowers.collectAsState()
+    val followings by relationViewModel.userFollowings.collectAsState()
     var username by remember { mutableStateOf<String>(userProfile.username ?: "") }
     var savedImagePath by remember { mutableStateOf<String?>(userProfile.imagePath ?: "") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -151,6 +154,8 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
     ) { uri ->
         if (uri != null) {
             selectedImageUri = uri
+            val path = copyImageToInternalStorage(context,uri);
+            viewModel.updateImagePath(userId = userProfile.id, path)
         }
     }
 
@@ -243,10 +248,9 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
                 }
             }
 
-            // Stats Column helper function
-            StatItem(label = "Posts", count = "0")
-            StatItem(label = "Followers", count = "0")
-            StatItem(label = "Following", count = "0")
+            StatItem(label = "Posts", count = userPosts?.size ?: 0)
+            StatItem(label = "Followers", count = followers?.size ?: 0)
+            StatItem(label = "Following", count = followings?.size ?: 0)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -314,7 +318,7 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
         Spacer(modifier = Modifier.height(8.dp))
 
         println("This is username above ${userProfile}")
-        Posts(userPosts)
+        Posts(userPosts, navController)
 
         if (showBottomSheet) {
             ModalBottomSheet(
@@ -335,221 +339,6 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel){
     }
 }
 
-@Composable
-fun PostCreationContent(
-    onPost: () -> Unit,
-    userProfile: UserProfileEntity,
-    postViewModel: PostViewModel
-) {
-    val context = LocalContext.current
-    var textContent by remember { mutableStateOf("") }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            selectedImageUri = uri
-        }
-    }
-    val tmpUri = remember {
-        val file = File(context.cacheDir, "tmp_image_${System.currentTimeMillis()}.jpg")
-        FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.provider",
-            file
-        )
-    }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            selectedImageUri = tmpUri // Cập nhật URI để hiển thị ảnh vừa chụp lên Box
-        }
-    }
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            cameraLauncher.launch(tmpUri)
-        }
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .navigationBarsPadding()
-    ) {
-        Text("Tạo bài viết", style = MaterialTheme.typography.titleLarge)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Ô nhập nội dung bài viết
-        OutlinedTextField(
-            value = textContent,
-            onValueChange = { textContent = it },
-            placeholder = { Text("Bạn đang nghĩ gì?") },
-            modifier = Modifier.fillMaxWidth().height(150.dp)
-        )
-
-        Row(modifier = Modifier.padding(vertical = 16.dp)) {
-            IconButton(onClick = {
-                imagePicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Gallery")
-            }
-            // Nút mở camera chụp ảnh
-            IconButton(onClick = {when (PackageManager.PERMISSION_GRANTED) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
-
-                    cameraLauncher.launch(tmpUri)
-                }
-                else -> {
-
-                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                }
-            }}) {
-                Icon(Icons.Default.Create, contentDescription = "Camera")
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(150.dp)
-                .background(Color.LightGray), // Màu nền khi chưa có ảnh
-            contentAlignment = Alignment.Center
-        ) {
-            if (selectedImageUri != null) {
-                println("Taken image -- ${selectedImageUri}")
-
-                AsyncImage(
-                    model = selectedImageUri,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.White
-                )
-            }
-        }
-
-        Button(
-            onClick = {
-                var path = ""
-                if (selectedImageUri != null){
-                    path = copyImageToInternalStorage(context, selectedImageUri!!)
-                }
-                postViewModel.createPost(PostEntity(userId = userProfile.id, content = textContent, imagePath = path, audioPath = "", createdAt = null))
-                onPost() },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = textContent.isNotBlank()
-        ) {
-            Text("Đăng bài")
-        }
-    }
-}
-
-@Composable
-fun StatItem(label: String, count: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = count, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-    }
-}
-
-@Composable
-fun Posts(posts: List<PostWithUser>?) {
-    val context = LocalContext.current
-
-    if ( !posts.isNullOrEmpty()){
-        LazyColumn {
-            items(posts) { post -> Blog(post) }
-        }
-    }else {
-        Text("Upload something")
-    }
-}
-
-@Composable
-fun Blog(post: PostWithUser) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(45.dp)
-                    .clip(CircleShape)
-                    .background(Color.Gray),
-
-                contentAlignment = Alignment.Center
-            ) {
-                if (post.user.imagePath != null) {
-
-                    AsyncImage(
-                        model = post.user.imagePath,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            println("This is username ${post.user.username}")
-            Column {
-                Text(post.user.username!!, style = MaterialTheme.typography.titleSmall)
-                Text("March 3, 2026 • 10:45 PM", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = post.post.content,
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
 
 
 
-        Box(
-            modifier = Modifier
-                .heightIn(min = 300.dp)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Gray),
-
-            contentAlignment = Alignment.Center
-        ) {
-            if (post.post.imagePath != null) {
-
-                AsyncImage(
-                    model = post.post.imagePath,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = Color.White
-                )
-            }
-        }
-    }
-}

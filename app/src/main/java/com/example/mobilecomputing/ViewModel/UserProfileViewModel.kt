@@ -66,4 +66,10 @@ class UserProfileViewModel(private val dao: UserProfileDao) : ViewModel() {
             }
         }
     }
+
+    fun updateImagePath(userId: Int, imagePath: String){
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.updateImagePath(path = imagePath, id = userId)
+        }
+    }
 }
