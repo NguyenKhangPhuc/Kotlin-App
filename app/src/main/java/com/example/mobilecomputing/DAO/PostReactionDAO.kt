@@ -1,11 +1,11 @@
-package com.example.mobilecomputing.dao
+package com.example.mobilecomputing.DAO
 
 import androidx.room.*
 import com.example.mobilecomputing.entity.PostReactionEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface PostReactionDao {
+interface PostReactionDAO {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReaction(reaction: PostReactionEntity)

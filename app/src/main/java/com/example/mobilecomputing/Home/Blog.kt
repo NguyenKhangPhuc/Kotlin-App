@@ -36,16 +36,32 @@ import com.example.mobilecomputing.entity.PostWithUser
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobilecomputing.AppDatabase
+import com.example.mobilecomputing.ViewModel.PostReactionViewModel
+import com.example.mobilecomputing.ViewModel.RelationViewModel
+import com.example.mobilecomputing.ViewModelFactory.PostReactionFactory
+import com.example.mobilecomputing.ViewModelFactory.RelationFactory
+import com.example.mobilecomputing.entity.PostReactionEntity
 
 @Composable
 fun Blog(post: PostWithUser, navController: NavController) {
     val context = LocalContext.current
     val sessionManager = SessionManager(context)
     val idFromPrefs = sessionManager.getUserId()
+
+    val database = AppDatabase.getInstance(context)
+    val postReactionFactory = PostReactionFactory(database.postReactionDAO())
+    val postReactionViewModel: PostReactionViewModel = viewModel(factory = postReactionFactory)
+    postReactionViewModel.setUserId(idFromPrefs)
+    val reactions by postReactionViewModel.reactions.collectAsState()
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -111,22 +127,45 @@ fun Blog(post: PostWithUser, navController: NavController) {
                     contentScale = ContentScale.Crop
                 )
             }
+        val isLiked = reactions?.any { it.userId == idFromPrefs }
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(
-                onClick = { /* Handle Like */ },
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                shape = RectangleShape
-            ) {
-                Icon(
-                    imageVector = Icons.Default.FavoriteBorder,
-                    contentDescription = "Like",
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Like", color = Color.Black)
+            if (isLiked == true){
+                TextButton(
+                    onClick = {
+                        val postReaction = PostReactionEntity(userId = idFromPrefs, postId = post.post.id)
+                        postReactionViewModel.deleteReaction(postReaction)
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    shape = RectangleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Like",
+                        tint = Color.Red
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Like (${reactions?.size ?: 0})", color = Color.Black)
+                }
+            }else {
+                TextButton(
+                    onClick = {
+                        val postReaction = PostReactionEntity(userId = idFromPrefs, postId = post.post.id)
+                        postReactionViewModel.createReaction(postReaction)
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    shape = RectangleShape
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Like",
+                        tint = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Like (${reactions?.size ?: 0})", color = Color.Black)
+                }
             }
 
             VerticalDivider(
@@ -137,7 +176,10 @@ fun Blog(post: PostWithUser, navController: NavController) {
             )
 
             TextButton(
-                onClick = { /* Handle Comment */ },
+                onClick = {
+                    val postReaction = PostReactionEntity(userId = idFromPrefs, postId = post.post.id)
+                    postReactionViewModel.deleteReaction(postReaction)
+                },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 shape = RectangleShape
             ) {

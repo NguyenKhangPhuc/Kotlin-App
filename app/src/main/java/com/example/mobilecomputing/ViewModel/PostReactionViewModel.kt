@@ -6,7 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.example.mobilecomputing.DAO.RelationshipDAO
 import com.example.mobilecomputing.SessionManager
-import com.example.mobilecomputing.dao.PostReactionDao
+import com.example.mobilecomputing.DAO.PostReactionDAO
 import com.example.mobilecomputing.entity.PostEntity
 import com.example.mobilecomputing.entity.PostReactionEntity
 import com.example.mobilecomputing.entity.PostWithUser
@@ -19,13 +19,13 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 
-class PostReactionViewModel(private val dao: PostReactionDao) : ViewModel() {
+class PostReactionViewModel(private val dao: PostReactionDAO) : ViewModel() {
 
     private val _currentPostId = MutableStateFlow<Int?>(null)
     fun setUserId(id: Int) {
         _currentPostId.value = id
     }
-    val userFollowings: StateFlow<List<PostReactionEntity>?> = _currentPostId
+    val reactions: StateFlow<List<PostReactionEntity>?> = _currentPostId
         .flatMapLatest { id ->
             if (id == null || id == -1) {
                 kotlinx.coroutines.flow.flowOf(null)
@@ -39,7 +39,7 @@ class PostReactionViewModel(private val dao: PostReactionDao) : ViewModel() {
             initialValue = null
         )
 
-    fun createRelationship(entity: PostReactionEntity) {
+    fun createReaction(entity: PostReactionEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 println("Bắt đầu insert: $entity")
@@ -52,7 +52,7 @@ class PostReactionViewModel(private val dao: PostReactionDao) : ViewModel() {
         }
     }
 
-    fun deleteRelationship(entity: PostReactionEntity){
+    fun deleteReaction(entity: PostReactionEntity){
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 dao.deleteReactionByUserAndPost(userId = entity.userId, postId = entity.postId)

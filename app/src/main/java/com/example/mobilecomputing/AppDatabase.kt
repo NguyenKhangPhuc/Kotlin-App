@@ -8,15 +8,22 @@ import androidx.room.RoomDatabase
 import com.example.mobilecomputing.DAO.PostDAO
 import com.example.mobilecomputing.DAO.RelationshipDAO
 import com.example.mobilecomputing.DAO.UserProfileDao
+import com.example.mobilecomputing.DAO.PostReactionDAO
 import com.example.mobilecomputing.entity.PostEntity
+import com.example.mobilecomputing.entity.PostReactionEntity
 import com.example.mobilecomputing.entity.RelationshipEntity
 import com.example.mobilecomputing.entity.UserProfileEntity
 
-@Database(entities = [UserProfileEntity::class, PostEntity::class, RelationshipEntity::class], version = 2, exportSchema = false)
+@Database(entities = [
+    UserProfileEntity::class,
+    PostEntity::class,
+    RelationshipEntity::class,
+    PostReactionEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun userProfileDAO(): UserProfileDao
     abstract  fun postDAO(): PostDAO
     abstract  fun relationDAO(): RelationshipDAO
+    abstract  fun postReactionDAO(): PostReactionDAO
     companion object {
         @Volatile
         private var INSTANCE: AppDatabase? = null
