@@ -63,12 +63,15 @@ import com.example.mobilecomputing.entity.PostReactionEntity
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.ui.text.font.FontWeight
+import com.example.mobilecomputing.ViewModel.UserProfileViewModel
+import com.example.mobilecomputing.ViewModelFactory.UserProfileViewModelFactory
 import com.example.mobilecomputing.entity.CommentEntity
 import com.example.mobilecomputing.entity.CommentWithUser
+import com.example.mobilecomputing.entity.UserProfileEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Blog(post: PostWithUser, navController: NavController) {
+fun Blog(post: PostWithUser, navController: NavController, currentUserProfile: UserProfileEntity) {
     val context = LocalContext.current
     val sessionManager = SessionManager(context)
     val idFromPrefs = sessionManager.getUserId()
@@ -261,7 +264,7 @@ fun Blog(post: PostWithUser, navController: NavController) {
                         color = MaterialTheme.colorScheme.surface
                     ) {
                         CommentInputSection(
-                            imageModel = post.user.imagePath,
+                            imageModel = currentUserProfile.imagePath,
                             post = post,
                             currentUserId = idFromPrefs,
                             commentViewModel = commentViewModel

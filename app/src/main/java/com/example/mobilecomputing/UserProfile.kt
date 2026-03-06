@@ -90,13 +90,22 @@ fun UserProfileHome(userId: Int, navController: NavController){
     val context = LocalContext.current
     val database = AppDatabase.getInstance(context)
     val factory = UserProfileViewModelFactory(database.userProfileDAO())
-    val viewModel: UserProfileViewModel = viewModel(factory = factory)
+    val viewModel: UserProfileViewModel = viewModel(key = "user_${userId}",factory = factory)
     val userProfile by viewModel.userProfile.collectAsState()
+
+    val currentUserViewModel: UserProfileViewModel = viewModel(factory = factory)
+    val currentUserProfile by currentUserViewModel.userProfile.collectAsState()
+    val session = SessionManager(context)
+    val idFromPref = session.getUserId()
+    if (idFromPref != -1){
+        currentUserViewModel.setUserId(idFromPref)
+    }
+    println("current user in another user profile ${currentUserProfile}")
     viewModel.setUserId(userId)
-    if (userProfile == null) {
+    if (userProfile == null || currentUserProfile == null) {
         UserProfileLoadingScreen()
     } else {
-        UserProfileMainScreen(userProfile!!, viewModel, navController)
+        UserProfileMainScreen(userProfile!!, viewModel, navController, currentUserProfile!!)
     }
 }
 
@@ -111,7 +120,9 @@ fun UserProfileLoadingScreen(){
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserProfileMainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel, navController: NavController){
+fun UserProfileMainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel,
+                          navController: NavController,
+                          currentUserProfile: UserProfileEntity){
     val context = LocalContext.current
     val database = AppDatabase.getInstance(context)
     val factory = PostFactory(database.postDAO())
@@ -307,7 +318,7 @@ fun UserProfileMainScreen(userProfile: UserProfileEntity, viewModel: UserProfile
         Spacer(modifier = Modifier.height(8.dp))
 
         println("This is username above ${userProfile}")
-        Posts(userPosts, navController)
+        Posts(userPosts, navController, currentUserProfile=currentUserProfile)
 
         if (showBottomSheet) {
             ModalBottomSheet(

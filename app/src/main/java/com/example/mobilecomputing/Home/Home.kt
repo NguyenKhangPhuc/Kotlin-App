@@ -318,7 +318,7 @@ fun MainScreen(userProfile: UserProfileEntity, viewModel: UserProfileViewModel, 
         Spacer(modifier = Modifier.height(8.dp))
 
         println("This is username above ${userProfile}")
-        Posts(userPosts, navController)
+        Posts(userPosts, navController, currentUserProfile = userProfile)
 
         if (showBottomSheet) {
             ModalBottomSheet(

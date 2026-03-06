@@ -14,15 +14,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.mobilecomputing.entity.PostWithUser
+import com.example.mobilecomputing.entity.UserProfileEntity
 
 @Composable
-fun Posts(posts: List<PostWithUser>?, navController: NavController) {
+fun Posts(posts: List<PostWithUser>?, navController: NavController, currentUserProfile: UserProfileEntity) {
     val context = LocalContext.current
 
     if ( !posts.isNullOrEmpty()){
         LazyColumn (verticalArrangement = Arrangement.spacedBy(12.dp),){
             itemsIndexed(posts) {
-                index, post -> Blog(post, navController)
+                index, post -> Blog(post, navController, currentUserProfile)
                 if (index < posts.lastIndex) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 10.dp),

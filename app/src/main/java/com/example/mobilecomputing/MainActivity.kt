@@ -75,6 +75,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.navigation.NavType
@@ -86,14 +87,59 @@ import com.example.mobilecomputing.Home.UserProfileMainScreen
 import com.example.mobilecomputing.ViewModel.PostViewModel
 import com.example.mobilecomputing.ViewModelFactory.PostFactory
 import com.example.mobilecomputing.entity.UserProfileEntity
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val splashScreen = installSplashScreen()
+        var keepSplashScreen by mutableStateOf(true)
+        splashScreen.setKeepOnScreenCondition { false }
+        lifecycleScope.launch {
+            delay(2000)
+            keepSplashScreen = false
+        }
         enableEdgeToEdge()
 
         setContent {
-            App()
+            if (keepSplashScreen) {
+                SplashScreenUI()
+            } else {
+                App()
+            }
+        }
+    }
+}
+
+@Composable
+fun SplashScreenUI() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "K P A P P",
+                style = TextStyle(
+                    color = Color(0xFFFF69B4),
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 10.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            CircularProgressIndicator(
+                color = Color(0xFFFF69B4),
+                strokeWidth = 4.dp,
+                modifier = Modifier.size(48.dp)
+            )
         }
     }
 }
@@ -123,6 +169,7 @@ fun App(){
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         if (ContextCompat.checkSelfPermission(context , Manifest.permission.POST_NOTIFICATIONS)
             == PackageManager.PERMISSION_GRANTED
@@ -192,13 +239,28 @@ fun AllBlogMainScreen( navController: NavController,modifier: Modifier = Modifie
     val factory = PostFactory(database.postDAO())
     val postViewModel: PostViewModel = viewModel(factory = factory)
     val allPosts by postViewModel.allPosts.collectAsState()
+
+    val userFactory = UserProfileViewModelFactory(database.userProfileDAO())
+    val viewModel: UserProfileViewModel = viewModel(factory = userFactory)
+    val sessionManager = SessionManager(context)
+    val idFromPrefs = sessionManager.getUserId()
+    if (idFromPrefs != -1) {
+        viewModel.setUserId(idFromPrefs)
+    }
+    val userProfile by viewModel.userProfile.collectAsState()
+
     if (allPosts.isNullOrEmpty()){
         Text("No posts from other users")
+    } else if (userProfile == null){
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Loading...")
+            CircularProgressIndicator()
+        }
     }else {
         Column (modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)){
-            Posts(allPosts, navController)
+            Posts(allPosts, navController, currentUserProfile = userProfile!!)
         }
     }
 }
