@@ -8,7 +8,6 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "post_reactions",
-    // Định nghĩa Foreign Keys
     foreignKeys = [
         ForeignKey(
             entity = UserProfileEntity::class,

@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_kpapp_text">
 
-    <item
-        android:drawable="@drawable/ic_kpapp_text"
-        android:gravity="center" />
-</layer-list>
+    <target
+        android:name="groupK"
+        android:animation="@animator/jump" />
+
+    <target
+        android:name="groupP1"
+        android:animation="@animator/jump" />
+
+    <target
+        android:name="groupA"
+        android:animation="@animator/jump" />
+    <target
+        android:name="groupP2"
+        android:animation="@animator/jump" />
+
+    <target
+        android:name="groupP3"
+        android:animation="@animator/jump" />
+</animated-vector>

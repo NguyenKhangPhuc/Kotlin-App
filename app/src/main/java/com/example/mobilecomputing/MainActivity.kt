@@ -250,7 +250,12 @@ fun AllBlogMainScreen( navController: NavController,modifier: Modifier = Modifie
     val userProfile by viewModel.userProfile.collectAsState()
 
     if (allPosts.isNullOrEmpty()){
-        Text("No posts from other users")
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No posts from other users")
+        }
     } else if (userProfile == null){
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Loading...")

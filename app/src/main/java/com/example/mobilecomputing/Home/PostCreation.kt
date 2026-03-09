@@ -95,7 +95,7 @@ fun PostCreationContent(
             .padding(16.dp)
             .navigationBarsPadding()
     ) {
-        Text("Tạo bài viết", style = MaterialTheme.typography.titleLarge)
+        Text("Create Post", style = MaterialTheme.typography.titleLarge)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -103,8 +103,8 @@ fun PostCreationContent(
         OutlinedTextField(
             value = textContent,
             onValueChange = { textContent = it },
-            placeholder = { Text("Bạn đang nghĩ gì?") },
-            modifier = Modifier.fillMaxWidth().height(150.dp)
+            placeholder = { Text("What are you thinking") },
+            modifier = Modifier.fillMaxWidth().height(50.dp)
         )
 
         Row(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -115,7 +115,7 @@ fun PostCreationContent(
             }) {
                 Icon(Icons.Default.Add, contentDescription = "Gallery")
             }
-            // Nút mở camera chụp ảnh
+
             IconButton(onClick = {when (PackageManager.PERMISSION_GRANTED) {
                 ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) -> {
 
@@ -129,30 +129,15 @@ fun PostCreationContent(
                 Icon(Icons.Default.Create, contentDescription = "Camera")
             }
         }
+        if (selectedImageUri != null) {
+            println("Taken image -- ${selectedImageUri}")
 
-        Box(
-            modifier = Modifier
-                .size(150.dp)
-                .background(Color.LightGray), // Màu nền khi chưa có ảnh
-            contentAlignment = Alignment.Center
-        ) {
-            if (selectedImageUri != null) {
-                println("Taken image -- ${selectedImageUri}")
-
-                AsyncImage(
-                    model = selectedImageUri,
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.White
-                )
-            }
+            AsyncImage(
+                model = selectedImageUri,
+                contentDescription = "Profile Picture",
+                modifier = Modifier.fillMaxWidth().height(500.dp),
+                contentScale = ContentScale.Crop
+            )
         }
 
         Button(
@@ -166,7 +151,7 @@ fun PostCreationContent(
             modifier = Modifier.fillMaxWidth(),
             enabled = textContent.isNotBlank()
         ) {
-            Text("Đăng bài")
+            Text("Create post")
         }
     }
 }
