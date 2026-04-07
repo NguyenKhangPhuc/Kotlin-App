@@ -1,5 +1,6 @@
 package com.example.mobilecomputing
 
+import ChatBotScreen
 import GyroSensor
 import NotificationHelper
 import SampleData
@@ -151,11 +152,13 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Setting: Screen("setting", "Setting", Icons.Default.Settings)
     object Login : Screen("login", "Login", Icons.Default.Info)
     object SignUp : Screen("signup", "Signup", Icons.Default.Info)
+    object ChatBot : Screen("chatbot", "Chatbot", Icons.Default.Info)
     object UserProfile : Screen("user/{userId}", "Profile", Icons.Default.Person) {
         fun createRoute(userId: Int) = "user/$userId"
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(){
     val navController = rememberNavController()
@@ -163,27 +166,15 @@ fun App(){
     val notificationHelper = NotificationHelper(context)
     val sessionManager = remember { SessionManager(context) }
 
-    // Kiểm tra ngay giá trị từ SharedPreferences khi khởi tạo State
     var isLoggedIn by remember {
         mutableStateOf(sessionManager.getUserId() != -1)
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        if (ContextCompat.checkSelfPermission(context , Manifest.permission.POST_NOTIFICATIONS)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            println("grant permission")
-            notificationHelper.showNotification("Accessability", "Automatic", context as Activity)
-        }
-    }else {
-        println("grant permission 2")
-        notificationHelper.showNotification("Accessability", "Automatic", context as Activity)
-    }
+
     val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
     val gyroManager = remember { GyroSensor(sensorManager,context) }
-
 
     DisposableEffect(Unit) {
         gyroManager.start()
@@ -194,7 +185,24 @@ fun App(){
             if (currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route) {
                 BottomNavigationBar(navController)
             }
-        }
+        },
+        floatingActionButton = {
+            if ( currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route && currentRoute != Screen.ChatBot.route) {
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate("chatbot")
+                    },
+                    containerColor = Color(0xFFFF69B4),
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Email, contentDescription = "Chat API")
+                }
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End,
+
+
     ) {
         innerPadding ->
         NavHost(
@@ -202,6 +210,7 @@ fun App(){
             startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route,
             modifier = Modifier.padding(innerPadding)
         ){
+
            composable(Screen.Chat.route){
                AllBlogMainScreen(navController)
            }
@@ -210,6 +219,20 @@ fun App(){
             }
             composable(Screen.Setting.route){
                 SettingPage(navController)
+            }
+            composable(Screen.ChatBot.route){
+                val database = AppDatabase.getInstance(LocalContext.current)
+                val userFactory = UserProfileViewModelFactory(database.userProfileDAO())
+                val userViewModel: UserProfileViewModel = viewModel(factory = userFactory)
+                val userProfile by userViewModel.userProfile.collectAsState()
+                val idFromPref = sessionManager.getUserId()
+                if (idFromPref != -1){
+                    userViewModel.setUserId(idFromPref)
+                }
+                userViewModel.setUserId(idFromPref)
+                userProfile?.let { profile ->
+                    ChatBotScreen(navController, profile)
+                } ?: Box(Modifier.fillMaxSize()) { CircularProgressIndicator(Modifier.align(Alignment.Center)) }
             }
             composable(Screen.Login.route) {
                 LoginScreen(

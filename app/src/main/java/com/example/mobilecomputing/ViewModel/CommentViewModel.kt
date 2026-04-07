@@ -5,22 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.mobilecomputing.DAO.CommentDAO
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.example.mobilecomputing.DAO.RelationshipDAO
-import com.example.mobilecomputing.SessionManager
-import com.example.mobilecomputing.DAO.PostReactionDAO
 import com.example.mobilecomputing.entity.CommentEntity
 import com.example.mobilecomputing.entity.CommentWithUser
-import com.example.mobilecomputing.entity.PostEntity
-import com.example.mobilecomputing.entity.PostReactionEntity
-import com.example.mobilecomputing.entity.PostWithUser
-import com.example.mobilecomputing.entity.RelationWithUser
-import com.example.mobilecomputing.entity.RelationshipEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.withContext
 
 class CommentViewModel(private val dao: CommentDAO) : ViewModel() {
 
